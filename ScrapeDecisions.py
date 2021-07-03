@@ -10,7 +10,7 @@ def query(circuit, year):
 # get new appellates for a specific circuit after a specific starting date
 def getNewCases(circuit, response, startingDate):
 
-    # create a list contianing appellate info: title, circuit, date, case id, and pdf link
+    # create a list containing appellate info: title, circuit, date, case id, and pdf link
     allCases = []
     for i in range(len(response['childNodes'])):
         date = response['childNodes'][i]['nodeValue']['publishdate']
@@ -20,7 +20,8 @@ def getNewCases(circuit, response, startingDate):
         else:
             id = response['childNodes'][i]['nodeValue']['granuleid'][14:21]
         pdf = "https://www.govinfo.gov/content/pkg/" + response['childNodes'][i]['nodeValue']['pdffile']
-        allCases.append([title, circuit, date, id, pdf])
+        if pdf[-5] == "0":
+            allCases.append([title, circuit, date, id, pdf])
 
     # turn dates to datetime objects
     for case in allCases:
@@ -42,7 +43,7 @@ def getNewCases(circuit, response, startingDate):
     #for case in cases:
     #    print(case)
     #    print()
-
+    cases.insert(0, ["Court", "Date", "Case_Name", "Case_ID", "PDF_Link"])  # add column headers
     return cases
 
 
