@@ -5,12 +5,13 @@ from dotenv import load_dotenv
 import json
 from google.cloud import storage
 from google.oauth2.service_account import Credentials
+import pandas as pd
 
 
 def get_pdf_text(court, pdf_name):
 
     # get credentials for API
-    credentials = os.getenv("credentials")
+    credentials = os.getenv("GOOGLEAPIKEY")
     client = vision.ImageAnnotatorClient.from_service_account_json(credentials)
     
     batch_size=100
@@ -62,6 +63,7 @@ def get_pdf_text(court, pdf_name):
         print(blob.name)
 
     # Process the first output file from GCS.
+    blob_list = [i for i in blob_list if i.name[-5:] == ".json"]
     output = blob_list[0]
 
     json_string = output.download_as_string()
@@ -95,9 +97,10 @@ def get_pdf_text(court, pdf_name):
 
     
 
-
 if __name__ == "__main__":
     load_dotenv(override=True)
-    court = 'ca5'
-    pdf_name = '09-40658'
+    court = 'ca1'
+    pdf_name = '17-01570'
+    #cases = pd.read_csv("newCases.csv")
+    #print(cases)
     get_pdf_text(court, pdf_name)
