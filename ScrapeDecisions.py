@@ -43,7 +43,8 @@ def getNewCases(circuit, response, startingDate):
     #for case in cases:
     #    print(case)
     #    print()
-    cases.insert(0, ["Court", "Date", "Case_Name", "Case_ID", "PDF_Link"])  # add column headers
+    if circuit == "ca1":
+        cases.insert(0, ["Case_Name", "Court", "Date", "Case_ID", "PDF_Link"])  # add column headers
     return cases
 
 

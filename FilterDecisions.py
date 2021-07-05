@@ -6,11 +6,13 @@ import json
 from google.cloud import storage
 from google.oauth2.service_account import Credentials
 import pandas as pd
+import numpy as np
 
 
-def get_pdf_text(court, pdf_name):
+def get_pdf_text(court, pdf_name):  # takes pandas input of two columns
 
     # get credentials for API
+    
     credentials = os.getenv("GOOGLEAPIKEY")
     client = vision.ImageAnnotatorClient.from_service_account_json(credentials)
     
@@ -92,15 +94,15 @@ def get_pdf_text(court, pdf_name):
         decision_blob = bucket.blob(output_destination + f'{pdf_name}.txt')
         decision_blob.upload_from_string(decision)
         print('\nSuccessfully uploaded to cloud!')
+        return True
     else:
         print('\nNo mentions of misconduct!')
-
+        return False
+    
     
 
 if __name__ == "__main__":
     load_dotenv(override=True)
-    court = 'ca1'
-    pdf_name = '17-01570'
-    #cases = pd.read_csv("newCases.csv")
-    #print(cases)
-    get_pdf_text(court, pdf_name)
+    cases = pd.read_csv("newCases.csv")
+    cases_with_mentions = cases[cases.apply(lambda x: get_pdf_text(x.Court, x.Case_ID), axis=1) == True]  # only add cases where misconduct was true
+    cases_with_mentions.to_csv("newCasesWithMentions.csv", index=False)

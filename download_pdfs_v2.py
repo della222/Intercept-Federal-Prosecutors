@@ -76,7 +76,7 @@ def upload_pdf_from_csv(link, client):
 
 
 def thread_function(data, client):
-    data['PDF Link'].apply(lambda link: upload_pdf_from_csv(link, client))
+    data['PDF_Link'].apply(lambda link: upload_pdf_from_csv(link, client))
 
 def main():
     dotenv.load_dotenv()
