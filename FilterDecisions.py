@@ -9,6 +9,32 @@ import pandas as pd
 import numpy as np
 
 
+def check_for_prosecutor_misconduct_found(decision):
+
+    if 'prosecutorial misconduct' in decision:
+        return True
+    
+    # checks if the words "prosecutor" and "misconduct" appear within 6 words of each other, front or back
+    pattern = re.compile(r"\b(?:prosecutor\W+(?:\w+\W+){0,6}?misconduct|misconduct\W+(?:\w+\W+){0,6}?prosecutor)\b", flags=re.IGNORECASE)
+    matches = re.finditer(pattern, decision)
+    matches = [match for match in matches]
+
+    if len(matches > 0):
+        return True
+    else:
+        return False
+    
+
+# helper, not used in this script
+def pull_text_from_gcs():
+    credentials = os.getenv("GOOGLEAPIKEY")
+    storage_client = storage.Client.from_service_account_json(credentials)
+    blobs = storage_client.list_blobs("intercept", prefix="texts/ca6/09-06234/09-06234.txt")
+    blob_list = [i for i in blobs]
+    text = blob_list[0].download_as_string().decode("utf-8") 
+    return text
+
+
 def get_pdf_text(court, pdf_name):  # takes pandas input of two columns
 
     # get credentials for API
@@ -72,11 +98,8 @@ def get_pdf_text(court, pdf_name):  # takes pandas input of two columns
     response = json.loads(json_string)
     
     '''
-    turn decision json to text and upload text back to cloud if text contains mentions of:
-    "posecutorial misconduct"
-    "prosecutor"
-    "misconduct"
-    "prosecutor committed misconduct" 
+    turn decision json to text and upload text back to cloud if text contains mentions of "prosecutorial misconduct"
+    or if "prosecutor" and "misconduct" are found within 6 words of each other
     '''
 
     # turn all json texts to string
@@ -89,7 +112,7 @@ def get_pdf_text(court, pdf_name):  # takes pandas input of two columns
     print(decision)
 
     # upload to google cloud if case contains mentions of misconduct
-    if 'prosecutorial misconduct' in decision or 'prosecutorial' in decision or 'misconduct' in decision or 'prosecutor committed misconduct' in decision:
+    if check_for_prosecutor_misconduct_found(decision) == True:
         output_destination = f'texts/{court}/{pdf_name}/'
         decision_blob = bucket.blob(output_destination + f'{pdf_name}.txt')
         decision_blob.upload_from_string(decision)
@@ -103,6 +126,7 @@ def get_pdf_text(court, pdf_name):  # takes pandas input of two columns
 
 if __name__ == "__main__":
     load_dotenv(override=True)
+    check_for_prosecutor_misconduct_found(pull_text_from_gcs())
     cases = pd.read_csv("newCases.csv")
     cases_with_mentions = cases[cases.apply(lambda x: get_pdf_text(x.Court, x.Case_ID), axis=1) == True]  # only add cases where misconduct was true
     cases_with_mentions.to_csv("newCasesWithMentions.csv", index=False)
