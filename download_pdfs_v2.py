@@ -75,26 +75,31 @@ def upload_pdf_from_csv(link, client):
     print()
 
 
-def thread_function(data, client):
-    data['PDF_Link'].apply(lambda link: upload_pdf_from_csv(link, client))
+# calls function to carry out download and upload for this thread
+def thread_function(data_split, client):
+    data_split['PDF_Link'].apply(lambda link: upload_pdf_from_csv(link, client))
 
 def main():
     dotenv.load_dotenv()
     client = connect_to_gcs()
-    new_data = pd.read_csv(os.getenv("NEWCASECSVPATH")).head(4)
+    new_data = pd.read_csv(os.getenv("NEWCASECSVPATH"))
     
-    split = np.array_split(new_data, 2)
+    data_split = np.array_split(new_data, 4)
 
-    t1 = threading.Thread(target=thread_function, args=(split[0], client,))
-    t2 = threading.Thread(target=thread_function, args=(split[1], client,))
+    t1 = threading.Thread(target=thread_function, args=(data_split[0], client,))
+    t2 = threading.Thread(target=thread_function, args=(data_split[1], client,))
+    t3 = threading.Thread(target=thread_function, args=(data_split[2], client,))
+    t4 = threading.Thread(target=thread_function, args=(data_split[3], client,))
+
     t1.start()
     t2.start()
-
+    t3.start()
+    t4.start()
+    
     t1.join()
     t2.join()
-    
-    # new_data['PDF Link'].apply(lambda link: upload_pdf_from_csv(link, client))
-
+    t3.join()
+    t4.join()
 
 if __name__ == '__main__':
     main()

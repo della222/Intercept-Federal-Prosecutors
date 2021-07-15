@@ -1,6 +1,7 @@
 import csv
 import requests
 from datetime import datetime, timedelta
+import re
 
 # get json file of appellates based on circuit and year
 def query(circuit, year):
@@ -15,11 +16,13 @@ def getNewCases(circuit, response, startingDate):
     for i in range(len(response['childNodes'])):
         date = response['childNodes'][i]['nodeValue']['publishdate']
         title = response['childNodes'][i]['nodeValue']['title']
-        if len(circuit) < 4:
-            id = response['childNodes'][i]['nodeValue']['granuleid'][13:21]
-        else:
-            id = response['childNodes'][i]['nodeValue']['granuleid'][14:21]
         pdf = "https://www.govinfo.gov/content/pkg/" + response['childNodes'][i]['nodeValue']['pdffile']
+
+        id_start = re.search(circuit, pdf)
+        dash_pdf_start = re.search(r"/pdf", pdf)
+
+        id = pdf[id_start.end()+1:dash_pdf_start.start()]
+
         if pdf[-5] == "0":
             allCases.append([title, circuit, date, id, pdf])
 
@@ -63,7 +66,9 @@ def scrapeAll(circuit, year, startingDate):
 
 def main():
     year = "2021"
-    startingDate = 'March 1, 2021'
+
+    # date you last scraped, NOT the latest date you have data for since cases are added retroactively
+    startingDate = 'March 1, 2021'  
 
     # list of all new cases
     all_new_cases = []
