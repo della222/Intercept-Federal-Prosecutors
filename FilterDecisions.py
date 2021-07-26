@@ -29,7 +29,7 @@ def check_for_prosecutor_misconduct_found(decision):
 
 # helper, not used in this script
 def pull_text_from_gcs():
-    credentials = os.getenv("GOOGLEAPIKEY")
+    credentials = os.getenv("credentials")
     storage_client = storage.Client.from_service_account_json(credentials)
     blobs = storage_client.list_blobs("intercept", prefix="texts/ca6/09-06234/09-06234.txt")
     blob_list = [i for i in blobs]
@@ -64,7 +64,7 @@ def extract_pdf_text(court, pdf_name):  # takes pandas input of two columns
 
     # get credentials for API
     
-    credentials = os.getenv("GOOGLEAPIKEY")
+    credentials = os.getenv("credentials")
     client = vision.ImageAnnotatorClient.from_service_account_json(credentials)
     
     batch_size=100
@@ -144,7 +144,7 @@ def extract_pdf_text(court, pdf_name):  # takes pandas input of two columns
     
 # check if a pdf file has already been scraped and if it already has text uploaded
 def check_if_scraped(circuit, pdf_name):
-    credentials = os.getenv("GOOGLEAPIKEY")
+    credentials = os.getenv("credentials")
     storage_client = storage.Client.from_service_account_json(credentials)
     blobs = storage_client.list_blobs("intercept", prefix=f"texts/{circuit}/{pdf_name}/")
     blob_list = [blob.name for blob in blobs]
@@ -199,9 +199,6 @@ if __name__ == "__main__":
     start_time = time.time()
 
     load_dotenv(override=True)
-    
-    # for testing with one text file
-    # check_for_prosecutor_misconduct_found(pull_text_from_gcs())
 
     cases = pd.read_csv("newCases.csv")
 

@@ -3,6 +3,7 @@ import re
 import json
 from google.cloud import storage
 from dotenv import load_dotenv
+import pandas as pd
 
 
 # get list of misconduct words
@@ -15,6 +16,7 @@ def get_misconduct_words(file):
 # gets decision text from gcs
 def pull_text_from_gcs(circuit, decision):
     credentials = os.getenv("credentials")
+    print(f"circuit: {circuit}, decision: {decision}")
     storage_client = storage.Client.from_service_account_json(credentials)
     blobs = storage_client.list_blobs("intercept", prefix=f"texts/{circuit}/{decision}/{decision}.txt")
     blob_list = [i for i in blobs]
@@ -28,7 +30,6 @@ def pull_text_from_gcs(circuit, decision):
 def find_misconduct_matches(text, keywords):
     keyword_matches = {}
     for word in keywords:
-        #print(word)
         matches = re.finditer(word, text)
         matches = [match for match in matches]
         keyword_matches[word] = matches
@@ -123,25 +124,14 @@ def find_phrases(decision):
     return value
 
 
-
-if __name__ == "__main__":
-    misconduct_words = get_misconduct_words('misconduct_words.json')
-    no_misconduct_words = get_misconduct_words('no_misconduct.json')
-    print('Misconduct Words:')
-    print(misconduct_words)
-    print('No Misconduct Words')
-    print(no_misconduct_words)
-    
-    load_dotenv(override=True)
-    circuit = 'ca6'
-    decision = '09-05307'
+def generate_scores(x):
+    circuit = x.Court
+    decision = x.Case_ID
 
     # get example of decision
     decision_text = pull_text_from_gcs(circuit, decision)
-    #print(decision_text)
 
     #decision_chunks = break_text(decision_text)
-
     
     # get misconduct value
     misconduct_matches = find_misconduct_matches(decision_text, misconduct_words)
@@ -161,7 +151,22 @@ if __name__ == "__main__":
     total_value = misconduct_value + no_misconduct_value
     print("Total Value:", total_value)
 
-
-
-    #TESTING
     print("Phrases Value:", find_phrases(decision))
+    print()
+    
+    return pd.Series([total_value, misconduct_value, no_misconduct_value])
+
+
+if __name__ == "__main__":
+    misconduct_words = get_misconduct_words('misconduct_words.json')
+    no_misconduct_words = get_misconduct_words('no_misconduct.json')
+    print('Misconduct Words:')
+    print(misconduct_words)
+    print('No Misconduct Words')
+    print(no_misconduct_words)
+    
+    load_dotenv(override=True)
+
+    df = pd.read_csv("newCasesWithMentions.csv")
+    df[['Total_Score', "Misconduct_Score", "No_Misconduct_Score"]] = df.apply(generate_scores, axis=1)
+    df.to_csv("scores_added.csv", index=False)

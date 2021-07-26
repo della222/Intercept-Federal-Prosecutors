@@ -13,7 +13,7 @@ Input: None
 Output: GCS Client Object
 """
 def connect_to_gcs():
-    client = storage.Client.from_service_account_json(os.getenv('GOOGLEAPIKEY'))
+    client = storage.Client.from_service_account_json(os.getenv('credentials'))
     print('successful client connection')
     return client
 
@@ -82,8 +82,8 @@ def thread_function(data_split, client):
 def main():
     dotenv.load_dotenv()
     client = connect_to_gcs()
-    new_data = pd.read_csv(os.getenv("NEWCASECSVPATH"))
-    
+    new_data = pd.read_csv("newCases.csv")
+   
     data_split = np.array_split(new_data, 4)
 
     t1 = threading.Thread(target=thread_function, args=(data_split[0], client,))
