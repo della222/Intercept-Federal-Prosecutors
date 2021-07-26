@@ -7,6 +7,8 @@ from google.cloud import storage
 from google.oauth2.service_account import Credentials
 import pandas as pd
 import numpy as np
+import threading
+import time
 
 
 def check_for_prosecutor_misconduct_found(decision):
@@ -19,7 +21,7 @@ def check_for_prosecutor_misconduct_found(decision):
     matches = re.finditer(pattern, decision)
     matches = [match for match in matches]
 
-    if len(matches > 0):
+    if len(matches) > 0:
         return True
     else:
         return False
@@ -35,7 +37,30 @@ def pull_text_from_gcs():
     return text
 
 
-def get_pdf_text(court, pdf_name):  # takes pandas input of two columns
+def join_pages(json_file):
+
+    # unload json data
+    json_string = json_file.download_as_string()
+    response = json.loads(json_string)
+
+    # concatenate data to string
+    all_pages = ''
+    for i in range(len(response['responses'])):
+        all_pages += response['responses'][i]['fullTextAnnotation']['text']
+
+    return all_pages
+
+
+def join_JSON(json_list):
+
+    all_data = ''
+    for blob in json_list:
+        all_data += join_pages(blob)
+
+    return all_data
+
+
+def extract_pdf_text(court, pdf_name):  # takes pandas input of two columns
 
     # get credentials for API
     
@@ -92,24 +117,16 @@ def get_pdf_text(court, pdf_name):  # takes pandas input of two columns
 
     # Process the first output file from GCS.
     blob_list = [i for i in blob_list if i.name[-5:] == ".json"]
-    output = blob_list[0]
-
-    json_string = output.download_as_string()
-    response = json.loads(json_string)
+    
+    decision = join_JSON(blob_list)
     
     '''
     turn decision json to text and upload text back to cloud if text contains mentions of "prosecutorial misconduct"
     or if "prosecutor" and "misconduct" are found within 6 words of each other
     '''
 
-    # turn all json texts to string
-    decision = ''
-    num_pages = len(response['responses'])
-    for i in range(num_pages):
-        decision += response['responses'][i]['fullTextAnnotation']['text']
-
-    print('\nFull Decision:\n')
-    print(decision)
+    #print('\nFull Decision:\n')
+    #print(decision)
 
     # upload to google cloud if case contains mentions of misconduct
     if check_for_prosecutor_misconduct_found(decision) == True:
@@ -117,16 +134,101 @@ def get_pdf_text(court, pdf_name):  # takes pandas input of two columns
         decision_blob = bucket.blob(output_destination + f'{pdf_name}.txt')
         decision_blob.upload_from_string(decision)
         print('\nSuccessfully uploaded to cloud!')
+        print("-----------------------------------")
         return True
     else:
         print('\nNo mentions of misconduct!')
+        print("-----------------------------------")
         return False
+
     
+# check if a pdf file has already been scraped and if it already has text uploaded
+def check_if_scraped(circuit, pdf_name):
+    credentials = os.getenv("GOOGLEAPIKEY")
+    storage_client = storage.Client.from_service_account_json(credentials)
+    blobs = storage_client.list_blobs("intercept", prefix=f"texts/{circuit}/{pdf_name}/")
+    blob_list = [blob.name for blob in blobs]
+
+    scraped = False
+    has_text = False
+
+    if len(blob_list) > 0:
+        print(f"{circuit}/{pdf_name} has been scraped already")
+        scraped = True
+        if f"texts/{circuit}/{pdf_name}/{pdf_name}.txt" in blob_list:
+            has_text = True
+            
+    return scraped, has_text
     
 
+def scrape(circuit, pdf_name):
+    # check if file has already been scraped by Google Vision
+    scraped, has_text  = check_if_scraped(circuit, pdf_name)
+    
+    '''
+    If it has been scraped, check if a text file exists
+        If so, return True so it is counted in the final spreadsheet, if not return false
+    If it has not been scraped, scrape it
+    '''
+    if scraped == True:
+        if has_text == True:
+            return True
+        else:
+            return False
+    else:
+        print("File has not been scraped")
+        return extract_pdf_text(circuit, pdf_name)
+    
+
+"""
+Input: Portion of dataframe, list of data to be joined after executing
+Output: None
+
+Helper method that extracts the text from a given dataframe split. It 
+sets the dataframe as only the cases which mentioned misconduct, and appends it
+to an external list for saving
+"""    
+def thread_function(data_split, filtered_split):
+    data_split = data_split[data_split.apply(lambda x: scrape(x.Court, x.Case_ID), axis=1) == True]  # only add cases if scrape() returns true (i.e, found mentions of misconduct)
+    filtered_split.append(data_split)
+
+
+
 if __name__ == "__main__":
+
+    start_time = time.time()
+
     load_dotenv(override=True)
-    check_for_prosecutor_misconduct_found(pull_text_from_gcs())
+    
+    # for testing with one text file
+    # check_for_prosecutor_misconduct_found(pull_text_from_gcs())
+
     cases = pd.read_csv("newCases.csv")
-    cases_with_mentions = cases[cases.apply(lambda x: get_pdf_text(x.Court, x.Case_ID), axis=1) == True]  # only add cases where misconduct was true
+
+    # split dataframe into 4
+    data_split = np.array_split(cases, 4)
+
+    # empty list to insert filtered dataframes
+    filtered_split = []
+    
+    print(data_split)
+
+    t1 = threading.Thread(target=thread_function, args=(data_split[0], filtered_split,))
+    t2 = threading.Thread(target=thread_function, args=(data_split[1], filtered_split,))
+    t3 = threading.Thread(target=thread_function, args=(data_split[2], filtered_split,))
+    t4 = threading.Thread(target=thread_function, args=(data_split[3], filtered_split,))
+
+    t1.start()
+    t2.start()
+    t3.start()
+    t4.start()
+    
+    t1.join()
+    t2.join()
+    t3.join()
+    t4.join()
+
+    cases_with_mentions = pd.concat(filtered_split)
     cases_with_mentions.to_csv("newCasesWithMentions.csv", index=False)
+    end_time = time.time()
+    print(f"Completed in {end_time-start_time}")

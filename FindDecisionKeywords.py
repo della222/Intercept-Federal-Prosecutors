@@ -165,4 +165,3 @@ if __name__ == "__main__":
 
     #TESTING
     print("Phrases Value:", find_phrases(decision))
-
