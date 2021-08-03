@@ -24,7 +24,7 @@ def getNewCases(circuit, response, startingDate):
         id = pdf[id_start.end()+1:dash_pdf_start.start()]
 
         if pdf[-5] == "0":
-            allCases.append([title, circuit, date, id, pdf])
+            allCases.append([circuit, date, id, title, pdf])
 
     # turn dates to datetime objects
     for case in allCases:
@@ -47,7 +47,7 @@ def getNewCases(circuit, response, startingDate):
     #    print(case)
     #    print()
     if circuit == "ca1":
-        cases.insert(0, ["Case_Name", "Court", "Date", "Case_ID", "PDF_Link"])  # add column headers
+        cases.insert(0, ["Court", "Date", "Case_ID", "Case_Name", "PDF_Link"])  # add column headers
     return cases
 
 
