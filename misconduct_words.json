@@ -11,7 +11,6 @@
     "cumulative error": 3,
     " erred ": 1,
     "vacated": 2,
-    "remanded": 2,
     "mislead": 2,
     "misled": 2,
     "misrepresented": 3,
@@ -24,5 +23,12 @@
     "due process": 1,
     "exculpatory": 2,
     "berger v. united states": 3,
-    "plainly err": 3 
+    "plainly err": 3, 
+    "resentenced": 3,
+    "resentenced before a different judge": 3,
+    "resentenced by a different judge": 3,
+    "specific enforcement": 1,
+    "remand": 2,
+    "the united states violated its agreement": 3,
+    "the government violated its agreement": 3
 }

@@ -11,13 +11,31 @@ import threading
 import time
 
 
+'''
+Function needs refining, may not capture all cases
+'''
 def check_for_prosecutor_misconduct_found(decision):
-
-    if 'prosecutorial misconduct' in decision:
+    if 'prosecutorial misconduct' in decision or 'prosecutorial\nmisconduct' in decision:
         return True
     
     # checks if the words "prosecutor" and "misconduct" appear within 6 words of each other, front or back
     pattern = re.compile(r"\b(?:prosecutor\W+(?:\w+\W+){0,6}?misconduct|misconduct\W+(?:\w+\W+){0,6}?prosecutor)\b", flags=re.IGNORECASE)
+    matches = re.finditer(pattern, decision)
+    matches = [match for match in matches]
+
+    if len(matches) > 0:
+        return True
+
+    # checks if "prosecutor's ... conduct" or "conduct ... prosecutor" appears, within 6 words
+    pattern = re.compile(r"\b(?:prosecutor's\W+(?:\w+\W+){0,6}?conduct|conduct\W+(?:\w+\W+){0,6}?prosecutor)\b", flags=re.IGNORECASE)
+    matches = re.finditer(pattern, decision)
+    matches = [match for match in matches]
+
+    if len(matches) > 0:
+        return True
+
+    # checks if the words "government" and "misconduct" appear within 6 words of each other, front or back
+    pattern = re.compile(r"\b(?:government\W+(?:\w+\W+){0,6}?misconduct|misconduct\W+(?:\w+\W+){0,6}?government)\b", flags=re.IGNORECASE)
     matches = re.finditer(pattern, decision)
     matches = [match for match in matches]
 
@@ -121,15 +139,14 @@ def extract_pdf_text(court, pdf_name):  # takes pandas input of two columns
     decision = join_JSON(blob_list)
     
     '''
-    turn decision json to text and upload text back to cloud if text contains mentions of "prosecutorial misconduct"
-    or if "prosecutor" and "misconduct" are found within 6 words of each other
+    turn decision json to text and upload text back to cloud if text contains mentions of "prosecutorial misconduct" or other terms
     '''
 
     #print('\nFull Decision:\n')
     #print(decision)
 
     # upload to google cloud if case contains mentions of misconduct
-    if check_for_prosecutor_misconduct_found(decision) == True:
+    if check_for_prosecutor_misconduct_found(decision.lower()) == True:
         output_destination = f'texts/{court}/{pdf_name}/'
         decision_blob = bucket.blob(output_destination + f'{pdf_name}.txt')
         decision_blob.upload_from_string(decision)
@@ -147,15 +164,15 @@ def check_if_scraped(circuit, pdf_name):
     credentials = os.getenv("credentials")
     storage_client = storage.Client.from_service_account_json(credentials)
     blobs = storage_client.list_blobs("intercept", prefix=f"texts/{circuit}/{pdf_name}/")
-    blob_list = [blob.name for blob in blobs]
-
+    blob_list = [blob for blob in blobs]
+    blob_name_list = [blob.name for blob in blob_list]
     scraped = False
     has_text = False
 
     if len(blob_list) > 0:
         print(f"{circuit}/{pdf_name} has been scraped already")
         scraped = True
-        if f"texts/{circuit}/{pdf_name}/{pdf_name}.txt" in blob_list:
+        if f"texts/{circuit}/{pdf_name}/{pdf_name}.txt" in blob_name_list:
             has_text = True
             
     return scraped, has_text
