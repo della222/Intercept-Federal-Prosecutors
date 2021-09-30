@@ -3,7 +3,7 @@ A Nationwide Investigation for Federal Prosecutors
 
 Code for BU Spark! Summer 2021
 
-The code for this project relies on the Google Cloud Vision Api. To install and get started with it, please follow steps 1-6 in this codelab for the API. Use this link to set up the API Authentication Key and save it to your computer (and be sure to set the path as an environment variable using a .env file): https://cloud.google.com/vision/docs/libraries 
+The code for this project relies on the Google Cloud Vision Api. To install and get started with it, please follow steps 1-6 in this codelab (https://codelabs.developers.google.com/codelabs/cloud-vision-api-python#0) for the API. Use this link to set up the API Authentication Key and save it to your computer (and be sure to set the path as an environment variable using a .env file): https://cloud.google.com/vision/docs/libraries 
 
 In the Google Cloud Storage Bucket, there will be folders for pdf files and text files. Each of these folders is broken down by circuit and then by case ID. In the text folders there will be output JSON files containing the raw text of each case along with a .txt file containing the full text only if the case mentioned "prosecutorial misconduct". However, the text can be extracted from the JSON files so even if a case does not have a .txt file in its folder, it can be extracted later if desired. 
 
